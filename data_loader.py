@@ -27,9 +27,9 @@ def load_clinc(use_sample=True):
         test_texts, test_labels = splits["test"]
     else:
         dataset = load_dataset("DeepPavlov/clinc_oos", "plus")
-        train_texts, train_labels = dataset["train"]["text"], dataset["train"]["label"]
-        val_texts, val_labels = dataset["validation"]["text"], dataset["validation"]["label"]
-        test_texts, test_labels = dataset["test"]["text"], dataset["test"]["label"]
+        train_texts, train_labels = list(dataset["train"]["text"]), list(dataset["train"]["label"])
+        val_texts, val_labels = list(dataset["validation"]["text"]), list(dataset["validation"]["label"])
+        test_texts, test_labels = list(dataset["test"]["text"]), list(dataset["test"]["label"])
 
     num_classes = len(set(train_labels))
     print(f"{len(train_texts)} / {len(val_texts)} / {len(test_texts)}, {num_classes} classes"

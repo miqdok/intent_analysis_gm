@@ -69,7 +69,6 @@ class GeneticOptimizer:
         child1_genes, child2_genes = {}, {}
         params = list(self.search_space.keys())
 
-        # uniform crossover
         for param in params:
             if random.random() < 0.5:
                 child1_genes[param] = parent1.genes[param]
@@ -82,11 +81,16 @@ class GeneticOptimizer:
                 Individual(self.search_space, child2_genes))
 
     def _mutate(self, individual):
+        changed = False
         for param, values in self.search_space.items():
             if random.random() < self.mutation_rate:
-                individual.genes[param] = random.choice(values)
-        individual.fitness = None
-        individual.metrics = None
+                new_val = random.choice(values)
+                if new_val != individual.genes[param]:
+                    individual.genes[param] = new_val
+                    changed = True
+        if changed:
+            individual.fitness = None
+            individual.metrics = None
 
     def run(self):
         start_time = time.time()
@@ -107,11 +111,12 @@ class GeneticOptimizer:
             gen_fitnesses = [ind.fitness for ind in population]
             gen_info = {
                 "generation": gen + 1,
-                "best_fitness": gen_best.fitness,
-                "avg_fitness": np.mean(gen_fitnesses),
-                "std_fitness": np.std(gen_fitnesses),
+                "best_fitness": float(gen_best.fitness),
+                "min_fitness": float(min(gen_fitnesses)),
+                "avg_fitness": float(np.mean(gen_fitnesses)),
+                "std_fitness": float(np.std(gen_fitnesses)),
                 "best_genes": copy.deepcopy(gen_best.genes),
-                "global_best_fitness": self.best_individual.fitness,
+                "global_best_fitness": float(self.best_individual.fitness),
                 "time_seconds": round(time.time() - gen_start, 2)
             }
             self.history.append(gen_info)
@@ -121,24 +126,26 @@ class GeneticOptimizer:
                   f"avg={np.mean(gen_fitnesses):.4f}  "
                   f"global_best={self.best_individual.fitness:.4f}")
 
-            # elitism
             new_population = [copy.deepcopy(ind) for ind in population[:self.elitism_count]]
 
-            # fill rest via selection + crossover + mutation
             while len(new_population) < self.population_size:
                 p1 = self._tournament_select(population)
                 p2 = self._tournament_select(population)
                 c1, c2 = self._crossover(p1, p2)
                 self._mutate(c1)
                 self._mutate(c2)
-                new_population.extend([c1, c2])
-
-            new_population = new_population[:self.population_size]
+                new_population.append(c1)
+                if len(new_population) < self.population_size:
+                    new_population.append(c2)
 
             for ind in new_population:
                 self._evaluate(ind)
 
             population = new_population
+
+        population.sort(key=lambda x: x.fitness, reverse=True)
+        if population[0].fitness >= self.best_individual.fitness:
+            self.best_individual = copy.deepcopy(population[0])
 
         total_time = time.time() - start_time
 
